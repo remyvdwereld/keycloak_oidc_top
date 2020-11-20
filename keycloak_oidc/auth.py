@@ -1,5 +1,3 @@
-import logging
-
 from django.contrib.auth.models import Group
 from django.db import transaction
 from mozilla_django_oidc import auth
