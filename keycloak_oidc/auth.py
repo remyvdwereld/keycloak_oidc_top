@@ -5,7 +5,7 @@ from mozilla_django_oidc import auth
 CLAIMS_FIRST_NAME = "given_name"
 CLAIMS_LAST_NAME = "family_name"
 CLAIMS_REALM_ACCESS = "realm_access"
-CLAIMS_GROUPS = "roles"
+ROLES = "roles"
 
 
 class OIDCAuthenticationBackend(auth.OIDCAuthenticationBackend):
@@ -46,16 +46,24 @@ class OIDCAuthenticationBackend(auth.OIDCAuthenticationBackend):
         add them to the user. Note that any role not passed via keycloak
         will be removed from the user.
         """
-        with transaction.atomic():
-            self.clear_realm_access_groups(user)
+        new_groups = set(claims.get(ROLES, []))
+        current_groups = set(user.groups.values_list('name', flat=True))
 
-            for claims_group in claims.get(CLAIMS_GROUPS):
-                group, _ = Group.objects.get_or_create(name=claims_group)
+        groups_to_add = new_groups - current_groups
+        groups_to_remove = current_groups - new_groups
+
+        with transaction.atomic():
+            for group_name in groups_to_remove:
+                group = Group.objects.get(name=group_name)
+                group.user_set.remove(user)
+
+            for group_name in groups_to_add:
+                group, _ = Group.objects.get_or_create(name=group_name)
                 group.user_set.add(user)
 
     def get_groups(self, access_info):
         realm_access = access_info.get(CLAIMS_REALM_ACCESS, {})
-        groups = realm_access.get(CLAIMS_GROUPS, [])
+        groups = realm_access.get(ROLES, [])
         return groups
 
     def get_nonce(self, payload):
@@ -73,6 +81,6 @@ class OIDCAuthenticationBackend(auth.OIDCAuthenticationBackend):
         nonce = self.get_nonce(payload)
         access_info = self.verify_token(access_token, nonce=nonce)
         groups = self.get_groups(access_info)
-        user_info[CLAIMS_GROUPS] = groups
+        user_info[ROLES] = groups
 
         return user_info
