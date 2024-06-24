@@ -27,19 +27,6 @@ class OIDCAuthenticationBackend(auth.OIDCAuthenticationBackend):
         user = self.save_user(user, claims)
         return user
 
-    def clear_realm_access_groups(self, user):
-        """
-        Clears the user from the realm access groups
-        """
-        realm_access_groups = self.get_settings("OIDC_AUTHORIZED_GROUPS", None)
-        assert (
-            realm_access_groups
-        ), "OIDC_AUTHORIZED_GROUPS access groups must be configured"
-
-        for realm_access_group in realm_access_groups:
-            group, _ = Group.objects.get_or_create(name=realm_access_group)
-            group.user_set.remove(user)
-
     def update_groups(self, user, claims):
         """
         Transform roles obtained from keycloak into Django Groups and
@@ -51,6 +38,15 @@ class OIDCAuthenticationBackend(auth.OIDCAuthenticationBackend):
 
         groups_to_add = new_groups - current_groups
         groups_to_remove = current_groups - new_groups
+
+        # Get the realm_access_groups from settings
+        realm_access_groups = self.get_settings("OIDC_AUTHORIZED_GROUPS", None)
+        assert (
+            realm_access_groups
+        ), "OIDC_AUTHORIZED_GROUPS access groups must be configured"
+
+        # Only remove groups that are in groups_to_remove and also in realm_access_groups
+        groups_to_remove = groups_to_remove.intersection(realm_access_groups)
 
         with transaction.atomic():
             for group_name in groups_to_remove:
