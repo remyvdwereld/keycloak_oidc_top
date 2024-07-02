@@ -13,16 +13,19 @@ class OIDCAuthenticationBackend(auth.OIDCAuthenticationBackend):
         user.first_name = claims.get(CLAIMS_FIRST_NAME, "")
         user.last_name = claims.get(CLAIMS_LAST_NAME, "")
         user.save()
-
         self.update_groups(user, claims)
 
         return user
 
+
     def create_user(self, claims):
-        user = super(OIDCAuthenticationBackend, self).create_user(claims)
+        email = claims.get("email")
+        username = self.get_username(claims)
+        self.UserModel.objects.create_user(username=username, email=email)
         user = self.save_user(user, claims)
         return user
-
+        
+    
     def update_user(self, user, claims):
         user = self.save_user(user, claims)
         return user
