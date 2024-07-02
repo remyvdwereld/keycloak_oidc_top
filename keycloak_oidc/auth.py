@@ -21,7 +21,7 @@ class OIDCAuthenticationBackend(auth.OIDCAuthenticationBackend):
     def create_user(self, claims):
         email = claims.get("email")
         username = self.get_username(claims)
-        self.UserModel.objects.create_user(username=username, email=email)
+        user = self.UserModel.objects.create_user(username=username, email=email)
         user = self.save_user(user, claims)
         return user
         
