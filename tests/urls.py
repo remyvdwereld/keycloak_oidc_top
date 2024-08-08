@@ -1,6 +1,5 @@
-from django.conf.urls import url
-from django.urls import include
+from django.urls import include, re_path
 
 urlpatterns = [
-    url(r'^oidc/', include('keycloak_oidc.urls')),
+    re_path(r'^oidc/', include('keycloak_oidc.urls')),
 ]
